@@ -15,30 +15,30 @@ class ModelDiff:
         self.models = models
         
     @cached_property
-    def logits(self) -> Float[Tensor, "models problems problem_examples seq_len d_voc"]:
+    def logits(self) -> List[Float[Tensor, "models batch seq_len d_voc"]]:
         # TODO: maybe asyncio if models are on different devices?
         logits = []
-        for i, model in enumerate(self.models):
-            # TODO: Do we care about devices here?
-            # TODO: Loop here doesn't make sense
+        for problem in self.dataset:
             model_logits = []
-            for problem in self.dataset:
+            for i, model in enumerate(self.models):
+                # TODO: Do we care about devices here?
+                # TODO: Loop here doesn't make sense
                 model_logits.append(model(problem))
             logits.append(t.stack(model_logits))
-        return t.stack(logits)
+        return logits
     
     @cached_property
-    def log_prob(self) -> Float[Tensor, "models problems seq_len"]:
+    def log_prob(self) -> Float[Tensor, "problems models seq_len"]:
         #   TODO: remove loop/loops
         all_log_probs = []
-        for model_logits in self.logits:
+        for problem_logits, dataset in zip(self.logits, self.dataset):
             model_log_probs = []
-            for (problem_logits, dataset) in zip(model_logits, self.dataset): 
-                log_probs = problem_logits.log_softmax(dim=-1)
+            for model_logits in problem_logits: 
+                log_probs = model_logits.log_softmax(dim=-1)
                 log_probs = log_probs[:,:-1]  # remove last
                 index = dataset[:, 1:].unsqueeze(-1)
                 log_probs_for_tokens = log_probs.gather(dim=-1, index=index).squeeze(-1)
-                model_log_probs.append(log_probs_for_tokens.mean(dim=0))
+                model_log_probs.append(log_probs_for_tokens.mean(0))
             all_log_probs.append(t.stack(model_log_probs))
         return t.stack(all_log_probs)
     
@@ -46,7 +46,7 @@ class ModelDiff:
     def log_prob_diff(self) -> Float[Tensor, "problems seq_len"]:
         if len(self.models) != 2:
             raise NotImplementedError("log_prob_diff is implemented only for 2-model scenario")
-        return self.log_prob[0] - self.log_prob[1]
+        return self.log_prob[:,0] - self.log_prob[:,1]
 
     def plot_log_prob_diff(self) -> Figure:
         data = self.log_prob_diff.cpu().numpy()
