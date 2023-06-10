@@ -16,24 +16,25 @@ ipython.run_line_magic("autoreload", "2")
 # %%
 def generate_repeated_tokens(tokenizer, seq_len, batch_size):
     first_column = (t.ones(batch_size, 1) * tokenizer.bos_token_id).long()
-    seq = t.randint(0, tokenizer.vocab_size, (batch_size, seq_len), dtype=t.int64)
-    return t.cat([first_column, seq, seq], dim=-1).to(device)
+    seq = t.randint(0, tokenizer.vocab_size, (batch_size, seq_len // 2), dtype=t.int64)
+    return t.cat([first_column, seq, seq], dim=-1)
 
+def generate_random_tokens(tokenizer, seq_len, batch_size):
+    first_column = (t.ones(batch_size, 1) * tokenizer.bos_token_id).long()
+    seq = t.randint(0, tokenizer.vocab_size, (batch_size, seq_len), dtype=t.int64)
+    return t.cat([first_column, seq], dim=-1)
 
 # %% 
-model_1l = HookedTransformer.from_pretrained("attn-only-1l")
-model_2l = HookedTransformer.from_pretrained("attn-only-2l")
+model_1l = HookedTransformer.from_pretrained("attn-only-1l").to(device)
+model_2l = HookedTransformer.from_pretrained("attn-only-2l").to(device)
 
 dataset = t.stack((
-    generate_repeated_tokens(model_1l.tokenizer, seq_len=10, batch_size=10),
-    generate_repeated_tokens(model_1l.tokenizer, seq_len=10, batch_size=10),
-))
+    generate_repeated_tokens(model_1l.tokenizer, seq_len=20, batch_size=10),
+    generate_random_tokens(model_1l.tokenizer, seq_len=20, batch_size=10),
+)).to(device)
 
 # %%
 diff = compare(dataset, model_1l, model_2l)
-print(diff.logits.shape)
-print(diff.log_prob.shape)
-print(diff.log_prob_diff.shape)
-diff.plot_log_prob_diff()
+diff.plot_log_prob_diff().show()
 
 # %%

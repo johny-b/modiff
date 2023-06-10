@@ -18,13 +18,10 @@ class ModelDiff:
         # TODO: maybe asyncio if models are on different devices?
         logits = []
         for i, model in enumerate(self.models):
-            #   TODO: is this correct? Or maybe we should expect devices to be dealt with in the extenal code?
-            device = next(model.parameters()).device
-            dataset = self.dataset.to(device)
-            
-            # TODO: loop here doesn't make sense
+            # TODO: Do we care about devices here?
+            # TODO: Loop here doesn't make sense
             model_logits = []
-            for problem in dataset:
+            for problem in self.dataset:
                 model_logits.append(model(problem))
             logits.append(t.stack(model_logits))
         return t.stack(logits)
@@ -49,17 +46,18 @@ class ModelDiff:
         if len(self.models) != 2:
             raise NotImplementedError("log_prob_diff is implemented only for 2-model scenario")
         return self.log_prob[0] - self.log_prob[1]
-    
+
     def plot_log_prob_diff(self):
-        data = self.log_prob_diff.cpu().numpy()              
-        title = f"Per token log-prob on correct token, for sequence of length",
-        labels = {"index": "Sequence position", "value": "Loss"}                  
-        
-        fig = px.line(data.T)  #, title=title, labels=labels)                  
-        fig.update_layout(showlegend=False)                    
-        # fig.add_vrect(x0=0, x1=seq_len-.5, fillcolor="red", opacity=0.2, line_width=0)
-        # fig.add_vrect(x0=seq_len-.5, x1=2*seq_len-1, fillcolor="green", opacity=0.2, line_width=0)
-        fig.show()
+        data = self.log_prob_diff.cpu().numpy()
+        fig = px.line(data.T)                
+        fig.update_layout(
+            title="Difference of log probs of the correct token between models",
+            legend_title="Problem id",
+            xaxis_title="Token position",
+            yaxis_title="Correct token log prob diff",
+            title_x=0.5,
+        )                    
+        return fig
         
     def _parse_raw_dataset(self, dataset: Int[Tensor, "..."]) -> Int[Tensor, "problems problem_examples seq_len"]: 
         if len(dataset.shape) == 1:
