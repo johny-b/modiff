@@ -28,10 +28,10 @@ def generate_random_tokens(tokenizer, seq_len, batch_size):
 model_1l = HookedTransformer.from_pretrained("attn-only-1l").to(device)
 model_2l = HookedTransformer.from_pretrained("attn-only-2l").to(device)
 
-dataset = t.stack((
-    generate_repeated_tokens(model_1l.tokenizer, seq_len=20, batch_size=10),
-    generate_random_tokens(model_1l.tokenizer, seq_len=20, batch_size=10),
-)).to(device)
+dataset = [
+    generate_repeated_tokens(model_1l.tokenizer, seq_len=20, batch_size=10).to(device),
+    generate_random_tokens(model_1l.tokenizer, seq_len=20, batch_size=10).to(device),
+]
 
 # %%
 diff = compare(dataset, model_1l, model_2l)

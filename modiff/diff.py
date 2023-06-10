@@ -60,7 +60,10 @@ class ModelDiff:
         )                    
         return fig
         
-    def _parse_raw_dataset(self, dataset: Int[Tensor, "..."]) -> Int[Tensor, "problems problem_examples seq_len"]: 
+    def _parse_raw_dataset(self, dataset) -> List[Int[Tensor, "batch seq_len"]]:
+        # FIXME
+        return dataset
+        
         if len(dataset.shape) == 1:
             #   Just a sequence of tokens
             dataset = dataset.unsqueeze(0).unsqueeze(0)
