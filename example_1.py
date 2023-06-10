@@ -35,6 +35,6 @@ dataset = [
 
 # %%
 diff = compare(dataset, model_1l, model_2l)
-diff.plot_log_prob_diff().show()
+diff.plot_correct_token_log_prob_diff().show()
 
 # %%

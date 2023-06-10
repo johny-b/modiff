@@ -15,7 +15,7 @@ class ModelDiff:
         self.models = models
 
     #################################
-    #   GENERAL PROPERTIES        
+    #   GENERAL PROPERTIES/FUNCTIONS
     @cached_property
     def logits(self) -> List[Float[Tensor, "models batch seq_len d_voc"]]:
         # TODO: maybe asyncio if models are on different devices?
@@ -40,8 +40,11 @@ class ModelDiff:
         return log_probs
         
     @cached_property
-    def log_prob(self) -> Float[Tensor, "problems models seq_len"]:
-        #   TODO: remove loop/loops
+    def correct_token_log_prob(self) -> Float[Tensor, "problems models seq_len"]:
+        cfg = self.models[0].cfg
+        if cfg.d_vocab != cfg.d_vocab_out:
+            raise RuntimeError("correct_token_log_prob requires d_vocab == d_vocab_out")
+
         all_log_probs = []
         for x, dataset in zip(self.log_probs, self.dataset):
             model_log_probs = []
@@ -54,13 +57,11 @@ class ModelDiff:
         return t.stack(all_log_probs)
     
     @cached_property
-    def log_prob_diff(self) -> Float[Tensor, "problems seq_len"]:
+    def correct_token_log_prob_diff(self) -> Float[Tensor, "problems seq_len"]:
         if len(self.models) != 2:
             raise NotImplementedError("log_prob_diff is implemented only for 2-model scenario")
-        return self.log_prob[:,0] - self.log_prob[:,1]
+        return self.correct_token_log_prob[:,0] - self.correct_token_log_prob[:,1]
 
-    ###################################
-    #   GENERAL FUNCTIONS
     def pos_token_prob(self, pos_ix: int, out_x: int) -> Float[Tensor, "problems models"]:
         out = []
         for log_probs in self.log_probs:
@@ -70,8 +71,8 @@ class ModelDiff:
 
     #################################
     #   PLOTS
-    def plot_log_prob_diff(self) -> Figure:
-        data = self.log_prob_diff.cpu().numpy()
+    def plot_correct_token_log_prob_diff(self) -> Figure:
+        data = self.correct_token_log_prob_diff.cpu().numpy()
         fig = px.line(data.T)                
         fig.update_layout(
             title="Difference of log probs of the correct token between models",

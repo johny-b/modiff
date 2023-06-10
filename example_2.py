@@ -10,7 +10,7 @@ from transformer_lens import HookedTransformer, HookedTransformerConfig, utils
 from modiff import compare
 
 t.set_grad_enabled(False)
-device = "cpu"  # t.device("cuda" if t.cuda.is_available() else "cpu")
+device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 # DEV MODE: autoreload
 from IPython import get_ipython
