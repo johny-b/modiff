@@ -9,7 +9,7 @@ from transformer_lens import HookedTransformer, HookedTransformerConfig
 from modiff import compare
 
 t.set_grad_enabled(False)
-device = t.device("cuda" if t.cuda.is_available() else "cpu")
+device = "cpu"  # t.device("cuda" if t.cuda.is_available() else "cpu")
 
 # DEV MODE: autoreload
 from IPython import get_ipython
@@ -44,20 +44,47 @@ def get_model():
 
     state_dict = t.load("brackets_model_state_dict.pt")
     model.load_state_dict(state_dict)
+    
+    def add_perma_hooks_to_mask_pad_tokens(model: HookedTransformer, pad_token: int) -> HookedTransformer:
+        import einops
+        # Hook which operates on the tokens, and stores a mask where tokens equal [pad]
+        def cache_padding_tokens_mask(tokens, hook) -> None:
+            hook.ctx["padding_tokens_mask"] = einops.rearrange(tokens == pad_token, "b sK -> b 1 1 sK")
+
+        # Apply masking, by referencing the mask stored in the `hook_tokens` hook context
+        def apply_padding_tokens_mask(
+            attn_scores,
+            hook,
+        ) -> None:
+            attn_scores.masked_fill_(model.hook_dict["hook_tokens"].ctx["padding_tokens_mask"], -1e5)
+            if hook.layer() == model.cfg.n_layers - 1:
+                del model.hook_dict["hook_tokens"].ctx["padding_tokens_mask"]
+
+        # Add these hooks as permanent hooks (i.e. they aren't removed after functions like run_with_hooks)
+        for name, hook in model.hook_dict.items():
+            if name == "hook_tokens":
+                hook.add_perma_hook(cache_padding_tokens_mask)
+            elif name.endswith("attn_scores"):
+                hook.add_perma_hook(apply_padding_tokens_mask)
+    
+    model.reset_hooks(including_permanent=True)
+    add_perma_hooks_to_mask_pad_tokens(model, 1)
     return model
 
 def tokenize(brackets, max_len):
     assert len(brackets) <= max_len, f"Too long text: {brackets}"
     assert set(list(brackets)).issubset(set(['(', ')'])), f"Tekst should contain only (), got {brackets}"
     
-    out = [0] + [1] * max_len + [2]
+    out = [0]
     for ix, b in enumerate(brackets):
-        out[ix + 1] = 3 + int(b == '(')
+        out.append(3 + int(b == ')'))
+    out.append(2)
+    out += [1 for _ in range(max_len + 2 - len(out))]
         
-    return out
+    return t.tensor(out)
     
 
-def get_dataset(tokenizer):
+def get_dataset(subset_len=None):
     fname = "brackets_data.json"
     url = "https://drive.google.com/uc?export=download&id=1_05v9oAYjXyeaeSZv4KTzktYVpuK6xxH"
         
@@ -66,9 +93,12 @@ def get_dataset(tokenizer):
     
     with open(fname, "r") as f:
         data = json.load(f)
+
+    if subset_len is not None:
+        data = data[:subset_len]
         
     ok, bad_cnt, bad_elevation = [], [], []
-    for (brackets, is_ok) in data[:7]:
+    for (brackets, is_ok) in data:
         if is_ok:
             ok.append(brackets)
         else:
@@ -79,16 +109,23 @@ def get_dataset(tokenizer):
                 bad_elevation.append(brackets)
                 
     
-    ok = t.stack([t.tensor(tokenize(x, 40)) for x in ok])
-    bad_cnt = t.stack([t.tensor(tokenize(x, 40)) for x in bad_cnt])
-    bad_elevation = t.stack([t.tensor(tokenize(x, 40)) for x in bad_elevation])
+    ok = t.stack([tokenize(x, 40) for x in ok])
+    bad_cnt = t.stack([tokenize(x, 40) for x in bad_cnt])
+    bad_elevation = t.stack([tokenize(x, 40) for x in bad_elevation])
        
-    return t.stack((ok, bad_cnt, bad_elevation))
+    return [ok, bad_cnt, bad_elevation]
     
 # %%
-dataset = get_dataset(1)
+dataset = get_dataset(10)
+
+print(len(dataset[2]))
+# %%
+model_1 = get_model()
+model_2 = get_model()
 
 # %%
-model = get_model()
-print(model.tokenizer)
+diff = compare(dataset, model_1, model_2)
+print(diff.pos_token_prob(0, 0).round(decimals=2))
+diff.plot_pos_token_prob(0, 0).show()
+
 # %%

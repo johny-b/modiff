@@ -27,13 +27,24 @@ class ModelDiff:
             logits.append(t.stack(model_logits))
         return logits
     
+    def pos_token_prob(self, pos_ix: int, out_x: int) -> Float[Tensor, "problems models"]:
+        out = []
+        for logits in self.logits:
+            logits = logits[:, :, pos_ix, :]
+            probs = logits.log_softmax(dim=-1)
+            probs = probs[:, :, out_x].mean(dim=1)
+            out.append(probs)
+        return t.stack(out)
+        
+    
     @cached_property
     def log_prob(self) -> Float[Tensor, "problems models seq_len"]:
         #   TODO: remove loop/loops
         all_log_probs = []
         for problem_logits, dataset in zip(self.logits, self.dataset):
+
             model_log_probs = []
-            for model_logits in problem_logits: 
+            for model_logits in problem_logits:
                 log_probs = model_logits.log_softmax(dim=-1)
                 log_probs = log_probs[:,:-1]  # remove last
                 index = dataset[:, 1:].unsqueeze(-1)
@@ -56,6 +67,19 @@ class ModelDiff:
             legend_title="Problem id",
             xaxis_title="Token position",
             yaxis_title="Correct token log prob diff",
+            title_x=0.5,
+        )                    
+        return fig
+    
+
+    def plot_pos_token_prob(self, pos_ix: int, out_ix: int) -> Figure:
+        data = self.pos_token_prob(pos_ix, out_ix).cpu().numpy()
+        fig = px.bar(data.T, barmode="group")                
+        fig.update_layout(
+            title=f"Log prob value for token {out_ix} on position {pos_ix}",
+            legend_title="Problem id",
+            xaxis_title="Model ix",
+            yaxis_title="Log prob",
             title_x=0.5,
         )                    
         return fig
