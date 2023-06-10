@@ -2,9 +2,10 @@
 import urllib.request                                                           
 from pathlib import Path
 import json
+from functools import partial
 
 import torch as t
-from transformer_lens import HookedTransformer, HookedTransformerConfig
+from transformer_lens import HookedTransformer, HookedTransformerConfig, utils
 
 from modiff import compare
 
@@ -47,6 +48,7 @@ def get_model():
     
     def add_perma_hooks_to_mask_pad_tokens(model: HookedTransformer, pad_token: int) -> HookedTransformer:
         import einops
+        
         # Hook which operates on the tokens, and stores a mask where tokens equal [pad]
         def cache_padding_tokens_mask(tokens, hook) -> None:
             hook.ctx["padding_tokens_mask"] = einops.rearrange(tokens == pad_token, "b sK -> b 1 1 sK")
@@ -116,16 +118,20 @@ def get_dataset(subset_len=None):
     return [ok, bad_cnt, bad_elevation]
     
 # %%
-dataset = get_dataset(10)
+dataset = get_dataset(1000)
 
-print(len(dataset[2]))
 # %%
+def ablate_head(v, hook, head_ix):
+    v[:, :, head_ix, :] = 0.0
+
+model_0 = get_model()
 model_1 = get_model()
 model_2 = get_model()
 
-# %%
-diff = compare(dataset, model_1, model_2)
-print(diff.pos_token_prob(0, 0).round(decimals=2))
+model_1.hook_dict[utils.get_act_name("v", 2)].add_perma_hook(partial(ablate_head, head_ix=0))
+model_2.hook_dict[utils.get_act_name("v", 2)].add_perma_hook(partial(ablate_head, head_ix=1))
+
+diff = compare(dataset, model_0, model_1, model_2)
 diff.plot_pos_token_prob(0, 0).show()
 
 # %%

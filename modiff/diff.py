@@ -74,9 +74,9 @@ class ModelDiff:
 
     def plot_pos_token_prob(self, pos_ix: int, out_ix: int) -> Figure:
         data = self.pos_token_prob(pos_ix, out_ix).cpu().numpy()
-        fig = px.bar(data.T, barmode="group")                
+        fig = px.bar(data.T + 2, barmode="group")                
         fig.update_layout(
-            title=f"Log prob value for token {out_ix} on position {pos_ix}",
+            title=f"Average log prob value for token {out_ix} on position {pos_ix}",
             legend_title="Problem id",
             xaxis_title="Model ix",
             yaxis_title="Log prob",
