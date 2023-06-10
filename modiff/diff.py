@@ -4,9 +4,10 @@ from functools import cached_property
 from jaxtyping import Int, Float
 from typing import List, Optional, Tuple
 import plotly.express as px
-
+from plotly.graph_objects import Figure
 from torch import Tensor
 import torch as t
+
 
 class ModelDiff:
     def __init__(self, dataset, *models):
@@ -47,7 +48,7 @@ class ModelDiff:
             raise NotImplementedError("log_prob_diff is implemented only for 2-model scenario")
         return self.log_prob[0] - self.log_prob[1]
 
-    def plot_log_prob_diff(self):
+    def plot_log_prob_diff(self) -> Figure:
         data = self.log_prob_diff.cpu().numpy()
         fig = px.line(data.T)                
         fig.update_layout(
