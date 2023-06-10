@@ -24,8 +24,16 @@ def generate_repeated_tokens(tokenizer, seq_len, batch_size):
 model_1l = HookedTransformer.from_pretrained("attn-only-1l")
 model_2l = HookedTransformer.from_pretrained("attn-only-2l")
 
-dataset = generate_repeated_tokens(model_1l.tokenizer, seq_len=10, batch_size=50)
+dataset = t.stack((
+    generate_repeated_tokens(model_1l.tokenizer, seq_len=10, batch_size=10),
+    generate_repeated_tokens(model_1l.tokenizer, seq_len=10, batch_size=10),
+))
 
 # %%
 diff = compare(dataset, model_1l, model_2l)
+print(diff.logits.shape)
+print(diff.log_prob.shape)
+print(diff.log_prob_diff.shape)
 diff.plot_log_prob_diff()
+
+# %%
