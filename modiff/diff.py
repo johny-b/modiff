@@ -1,8 +1,7 @@
 from functools import cached_property
-
+from typing import List, Optional, Tuple
 
 from jaxtyping import Int, Float
-from typing import List, Optional, Tuple
 import plotly.express as px
 from plotly.graph_objects import Figure
 from torch import Tensor
