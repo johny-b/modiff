@@ -28,16 +28,24 @@ class ModelDiff:
                 model_logits.append(model(problem))
             logits.append(t.stack(model_logits))
         return logits
+    
+    @cached_property
+    def log_probs(self) -> List[Float[Tensor, "models batch seq_len d_voc"]]:
+        log_probs = []
+        for problem_logits, dataset in zip(self.logits, self.dataset):
+            model_log_probs = []
+            for model_logits in problem_logits:
+                model_log_probs.append(model_logits.log_softmax(dim=-1))
+            log_probs.append(t.stack(model_log_probs))
+        return log_probs
         
     @cached_property
     def log_prob(self) -> Float[Tensor, "problems models seq_len"]:
         #   TODO: remove loop/loops
         all_log_probs = []
-        for problem_logits, dataset in zip(self.logits, self.dataset):
-
+        for x, dataset in zip(self.log_probs, self.dataset):
             model_log_probs = []
-            for model_logits in problem_logits:
-                log_probs = model_logits.log_softmax(dim=-1)
+            for log_probs in x:
                 log_probs = log_probs[:,:-1]  # remove last
                 index = dataset[:, 1:].unsqueeze(-1)
                 log_probs_for_tokens = log_probs.gather(dim=-1, index=index).squeeze(-1)
@@ -55,11 +63,9 @@ class ModelDiff:
     #   GENERAL FUNCTIONS
     def pos_token_prob(self, pos_ix: int, out_x: int) -> Float[Tensor, "problems models"]:
         out = []
-        for logits in self.logits:
-            logits = logits[:, :, pos_ix, :]
-            probs = logits.log_softmax(dim=-1)
-            probs = probs[:, :, out_x].mean(dim=1)
-            out.append(probs)
+        for log_probs in self.log_probs:
+            log_probs = log_probs[:, :, pos_ix, :]
+            out.append(log_probs[:, :, out_x].mean(dim=1))
         return t.stack(out)
 
     #################################
