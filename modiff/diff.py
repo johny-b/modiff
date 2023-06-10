@@ -13,7 +13,9 @@ class ModelDiff:
     def __init__(self, dataset, *models):
         self.dataset = self._parse_raw_dataset(dataset)
         self.models = models
-        
+
+    #################################
+    #   GENERAL PROPERTIES        
     @cached_property
     def logits(self) -> List[Float[Tensor, "models batch seq_len d_voc"]]:
         # TODO: maybe asyncio if models are on different devices?
@@ -26,17 +28,7 @@ class ModelDiff:
                 model_logits.append(model(problem))
             logits.append(t.stack(model_logits))
         return logits
-    
-    def pos_token_prob(self, pos_ix: int, out_x: int) -> Float[Tensor, "problems models"]:
-        out = []
-        for logits in self.logits:
-            logits = logits[:, :, pos_ix, :]
-            probs = logits.log_softmax(dim=-1)
-            probs = probs[:, :, out_x].mean(dim=1)
-            out.append(probs)
-        return t.stack(out)
         
-    
     @cached_property
     def log_prob(self) -> Float[Tensor, "problems models seq_len"]:
         #   TODO: remove loop/loops
@@ -59,6 +51,19 @@ class ModelDiff:
             raise NotImplementedError("log_prob_diff is implemented only for 2-model scenario")
         return self.log_prob[:,0] - self.log_prob[:,1]
 
+    ###################################
+    #   GENERAL FUNCTIONS
+    def pos_token_prob(self, pos_ix: int, out_x: int) -> Float[Tensor, "problems models"]:
+        out = []
+        for logits in self.logits:
+            logits = logits[:, :, pos_ix, :]
+            probs = logits.log_softmax(dim=-1)
+            probs = probs[:, :, out_x].mean(dim=1)
+            out.append(probs)
+        return t.stack(out)
+
+    #################################
+    #   PLOTS
     def plot_log_prob_diff(self) -> Figure:
         data = self.log_prob_diff.cpu().numpy()
         fig = px.line(data.T)                
@@ -70,7 +75,6 @@ class ModelDiff:
             title_x=0.5,
         )                    
         return fig
-    
 
     def plot_pos_token_prob(self, pos_ix: int, out_ix: int) -> Figure:
         data = self.pos_token_prob(pos_ix, out_ix).cpu().numpy()
@@ -83,17 +87,9 @@ class ModelDiff:
             title_x=0.5,
         )                    
         return fig
-        
+    
+    ##################################
+    #   PRIVATE
     def _parse_raw_dataset(self, dataset) -> List[Int[Tensor, "batch seq_len"]]:
         # FIXME
-        return dataset
-        
-        if len(dataset.shape) == 1:
-            #   Just a sequence of tokens
-            dataset = dataset.unsqueeze(0).unsqueeze(0)
-        if len(dataset.shape) == 2:
-            #   Batch of sequences of tokens
-            dataset = dataset.unsqueeze(0)
-        
-        assert len(dataset.shape) == 3, "Dataset should have at most 3 dimensions"
         return dataset
