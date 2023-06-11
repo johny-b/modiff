@@ -6,12 +6,47 @@ import plotly.express as px
 from plotly.graph_objects import Figure
 from torch import Tensor
 import torch as t
-
+from transformer_lens import ActivationCache
 
 class ModelDiff:
     def __init__(self, dataset, *models):
         self.dataset = self._parse_raw_dataset(dataset)
         self.models = models
+        
+    #################################
+    #   TRANSFORMERLENS STUFF
+    @cached_property
+    def activation_cache(self) -> List[List[ActivationCache]]:
+        out = []
+        for dataset in self.dataset:
+            dataset_cache = []
+            for model in self.models:
+                _, cache = model.run_with_cache(dataset)
+                dataset_cache.append(cache)
+            out.append(dataset_cache)
+        return out    
+
+    def max_attention_diff(self, pos) -> Float[Tensor, "tasks n_heads"]:
+        if len(self.models) != 2:
+            raise NotImplementedError("max_attention_diff is implemented only for 2-model scenario")
+        
+        #   TODO: ensure models have the same architecture
+        config = self.models[0].cfg
+        n_layers, n_heads = config.n_layers, config.n_heads
+        
+        out_vals = []
+        for dataset_caches in self.activation_cache:
+            cache_1, cache_2 = dataset_caches
+            vals = []
+            for layer in range(n_layers):
+                for head in range(n_heads):
+                    pattern_1 = cache_1["pattern", layer]
+                    pattern_2 = cache_2["pattern", layer]
+                    max_attn_1 = pattern_1[:, head, pos].max(dim=-1).values.mean().item()
+                    max_attn_2 = pattern_2[:, head, pos].max(dim=-1).values.mean().item()
+                    vals.append(max_attn_1 - max_attn_2)
+            out_vals.append(vals)
+        return t.tensor(out_vals)
 
     #################################
     #   GENERAL PROPERTIES/FUNCTIONS
@@ -87,6 +122,18 @@ class ModelDiff:
         fig = px.bar(data.T, barmode="group")                
         fig.update_layout(
             title=f"Average log prob value for token {out_ix} on position {pos_ix}",
+            legend_title="Problem id",
+            xaxis_title="Model ix",
+            yaxis_title="Log prob",
+            title_x=0.5,
+        )                    
+        return fig
+    
+    def plot_max_attention_diff(self, pos) -> Figure:
+        data = self.max_attention_diff(pos)
+        fig = px.line(data.T)                
+        fig.update_layout(
+            title=f"Average log prob value for token",
             legend_title="Problem id",
             xaxis_title="Model ix",
             yaxis_title="Log prob",
