@@ -19,7 +19,7 @@ Tested on (python3.10.6, ubuntu22.04).
 
 ### Idea
 
-There is a set of [open problems in mech interp](https://www.alignmentforum.org/s/yivyHaCAmMJ3CqSyj/p/btasQF7wiCYPsr5qw) that can be summarized as "build a model-comparing tool and test it" (6.49 - 6.58). This is a POC of such a tool. 
+There is a set of [open problems in mech interp](https://www.alignmentforum.org/s/yivyHaCAmMJ3CqSyj/p/btasQF7wiCYPsr5qw#Problems) that can be summarized as "build a model-comparing tool and test it" (6.49 - 6.58). This is a POC of such a tool. 
 
 ### Purpose
 
