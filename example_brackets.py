@@ -20,6 +20,9 @@ device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 # %%
 def get_model():
+    """Returns a model that predicts if a bracket sequence is balanced.
+    
+    Copied from https://arena-ch1-transformers.streamlit.app/[1.4]_Balanced_Bracket_Classifier"""
     cfg = HookedTransformerConfig(
         n_ctx=42,
         d_model=56,
@@ -74,6 +77,7 @@ def get_model():
     return model
 
 def tokenize(brackets, max_len):
+    """Tokenize the brackets, pad to max_len."""
     assert len(brackets) <= max_len, f"Too long text: {brackets}"
     assert set(list(brackets)).issubset(set(['(', ')'])), f"Tekst should contain only (), got {brackets}"
 
@@ -87,6 +91,11 @@ def tokenize(brackets, max_len):
 
 
 def get_dataset(subset_len=None):
+    """Download brackets dataset. Split it into three groups (balanced, unbalanced_1, unbalanced_2).
+    
+    unbalanced_1 = "unbalanced because numbers of left/right brackets don't match". 
+    unbalanced_2 = "numbers of left/rigt brackets match, but elevation is negative at some point".
+    """
     fname = "brackets_data.json"
     url = "https://drive.google.com/uc?export=download&id=1_05v9oAYjXyeaeSZv4KTzktYVpuK6xxH"
 
@@ -133,5 +142,20 @@ model_2.hook_dict[utils.get_act_name("v", 2)].add_perma_hook(partial(ablate_head
 
 diff = compare(dataset, model_0, model_1, model_2)
 diff.plot_pos_token_prob(0, 0).show()
+diff.plot_pos_token_prob(0, 1).show()
+
+print("""
+OBSERVATIONS
+*   We have three models:
+    *   full model
+    *   model with ablated head 2.0
+    *   model with ablated head 2.1
+*   We notice that:
+    *   values for datasets 1/2 (the "unbalanced" cases) don't change much
+    *   value for dataset 0 (balanced) changes much more when we ablate head 2.1
+*   We also notice that these plots don't really make much sense.
+*   Let's say this is a demonstration of things-we-could-do with the library,
+    not what we should be doing.
+""")
 
 # %%

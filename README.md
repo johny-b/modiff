@@ -4,6 +4,17 @@ Compare two or more models. Get some useful data / plots. Built on top of Transf
 
 This is a hackaton-mode early alpha.
 
+## Installation
+
+```
+$ git clone https://github.com/johny-b/modiff.git
+$ cd modiff
+# (start a venv) 
+$ pip3 install -r requirements.txt
+```
+
+Tested on (python3.10.6, ubuntu22.04).
+
 ## Purpose
 
 ### Idea
