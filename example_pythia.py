@@ -43,8 +43,7 @@ plot = diff.plot_correct_token_log_prob_diff().show()
 # %%
 diff.plot_max_attention_diff(15).show()
 
-print(f"""
-OBSERVATIONS
+print(f"""OBSERVATIONS
 *   We have two early pythia models, after 512 and 1000 training steps
 *   First we do the same analysis as in `example_induction_heads.py`. We notice that:
     *   Younger pythia is "better" at "predicting" random sequences (red line). This is not surprising,
@@ -69,12 +68,8 @@ OBSERVATIONS
             *   Heads 3.0, 3.1, 3.6 are totally different, heads 4.6 and 4.7 prety much too.
         *   To conclude:
             *   Head 3.0 behavior differs between models and also between random/repeated sequences.
-                Therefore it is a part of the induction head circuit.
+                Therefore it is a (last?) part of the induction head circuit.
             *   Same for 3.1, 3.6, 4.6 and 4.7
             *   Head 2.7 changed a lot between earlier/later model, but doesn't matter for the
-                induction circuit (I'm not sure about this though)
-*   General note: we analyze induction heads in this example, but I expect that similar analysis
-    should be possible also for other datasets, e.g. IOI. At least that's what I hope for.
-
-""")
+                induction circuit (I'm not sure about this though)""")
 # %%
