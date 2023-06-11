@@ -39,4 +39,16 @@ dataset = [
 diff = compare(dataset, model_1l, model_2l)
 diff.plot_correct_token_log_prob_diff().show()
 
+print(f"""
+OBSERVATIONS
+*   Plot shows the average difference between log prob of the correct token 
+    according to both models. 
+*   Both models "predict" random data equally well (red line)
+*   Second model is much better at predicting the repeated sequence 
+    (second part of the blue line).
+    
+Example random sequence: {dataset[0][0]} - same tokens on positions n and n+10 for n>0.
+""")
+
+
 # %%

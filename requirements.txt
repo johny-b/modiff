@@ -1,3 +1,6 @@
 torch==2.0.1
 transformer_lens==1.2.2
 plotly==5.15.0
+
+# Plots don't work without this, no idea why.
+nbformat==5.9.0
