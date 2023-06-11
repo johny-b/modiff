@@ -8,12 +8,12 @@ t.set_grad_enabled(False)
 device = "cpu"  # t.device("cuda" if t.cuda.is_available() else "cpu")
 
 # DEV MODE: autoreload
-from IPython import get_ipython
-ipython = get_ipython()
-ipython.run_line_magic("load_ext", "autoreload")
-ipython.run_line_magic("autoreload", "2")
+# from IPython import get_ipython
+# ipython = get_ipython()
+# ipython.run_line_magic("load_ext", "autoreload")
+# ipython.run_line_magic("autoreload", "2")
 
-# %% 
+# %%
 pythia_early = HookedTransformer.from_pretrained("EleutherAI/pythia-70m-deduped", checkpoint_value=512).to(device)
 pythia_late = HookedTransformer.from_pretrained("EleutherAI/pythia-70m-deduped", checkpoint_value=1000).to(device)
 
